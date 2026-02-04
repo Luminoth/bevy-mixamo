@@ -1,0 +1,16 @@
+[package]
+name = "bevy-mixamo"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { version = "0.18", features = ["bevy_remote"] }
+bevy_ufbx = { git = "https://github.com/Luminoth/bevy_ufbx" }
+
+# Enable a small amount of optimization in the dev profile.
+[profile.dev]
+opt-level = 1
+
+# Enable a large amount of optimization in the dev profile for dependencies.
+[profile.dev.package."*"]
+opt-level = 3
