@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{color::palettes::css::*, prelude::*};
 use bevy_ufbx::FbxPlugin;
 
 fn main() {
@@ -15,7 +15,12 @@ fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn setup(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
+) {
     // Camera
     commands.spawn((
         Camera3d::default(),
@@ -49,9 +54,24 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         Name::new("Directional Light"),
     ));
 
+    // Test cube
+    commands.spawn((
+        Mesh3d(meshes.add(Cuboid::default())),
+        MeshMaterial3d(materials.add(Color::from(ORANGE))),
+        Transform::from_xyz(0.0, 0.5, 0.0),
+    ));
+
     // Load FBX scene
-    let scene = asset_server.load::<Scene>("models/Mutant.fbx#Scene0");
+    //let scene = asset_server.load::<Scene>("models/Mutant.fbx#Scene0");
 
     // Spawn the scene
-    commands.spawn((SceneRoot(scene), Name::new("Mutant")));
+    //commands.spawn((SceneRoot(scene), Name::new("Mutant")));
+
+    /*let mesh = asset_server.load::<Mesh>("models/Mutant.fbx#Mesh1000");
+    let material = asset_server.load::<StandardMaterial>("models/Mutant.fbx#Material0");
+    commands.spawn((
+        Mesh3d(mesh),
+        MeshMaterial3d(material),
+        Transform::from_xyz(0.0, 0.5, 0.0),
+    ));*/
 }
