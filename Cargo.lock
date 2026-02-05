@@ -356,7 +356,6 @@ name = "bevy-mixamo"
 version = "0.1.0"
 dependencies = [
  "bevy",
- "bevy_ufbx",
 ]
 
 [[package]]
@@ -1500,17 +1499,6 @@ dependencies = [
  "derive_more",
  "serde",
  "thiserror 2.0.18",
-]
-
-[[package]]
-name = "bevy_ufbx"
-version = "0.17.0"
-source = "git+https://github.com/Luminoth/bevy_ufbx#c4ccaa8d06db311df9a10aa956e1594ba03174f1"
-dependencies = [
- "bevy",
- "serde",
- "thiserror 2.0.18",
- "ufbx",
 ]
 
 [[package]]
@@ -4770,15 +4758,6 @@ name = "typewit"
 version = "1.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8c1ae7cc0fdb8b842d65d127cb981574b0d2b249b74d1c7a2986863dc134f71"
-
-[[package]]
-name = "ufbx"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6d09c5c5a8ce72ad7853b9c92c2b0aae0a4ae0167055f2ddaabecd7e9bec870"
-dependencies = [
- "cc",
-]
 
 [[package]]
 name = "unicode-bidi"
