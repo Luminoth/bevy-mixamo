@@ -25,17 +25,12 @@ fn setup(
     commands.spawn((
         Camera3d::default(),
         Transform::from_xyz(5.0, 5.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-        Name::new("Camera"),
-    ));
-
-    // Ambient light
-    commands.spawn((
         AmbientLight {
             color: Color::WHITE,
             brightness: 200.0,
             affects_lightmapped_meshes: false,
         },
-        Name::new("Ambient Light"),
+        Name::new("Camera"),
     ));
 
     // Light
