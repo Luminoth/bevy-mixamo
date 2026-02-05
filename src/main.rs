@@ -12,8 +12,12 @@ fn main() {
         .add_plugins(bevy::remote::http::RemoteHttpPlugin::default())
         .add_plugins(FbxPlugin)
         .add_systems(Startup, setup)
+        .add_systems(Update, apply_fallback_material)
         .run();
 }
+
+#[derive(Component)]
+struct FallbackMaterialApplied;
 
 fn setup(
     mut commands: Commands,
@@ -50,11 +54,11 @@ fn setup(
     ));
 
     // Test cube
-    commands.spawn((
+    /*commands.spawn((
         Mesh3d(meshes.add(Cuboid::default())),
         MeshMaterial3d(materials.add(Color::from(ORANGE))),
         Transform::from_xyz(0.0, 0.5, 0.0),
-    ));
+    ));*/
 
     // Load FBX scene
     let scene = asset_server.load::<Scene>("models/Mutant.fbx#Scene0");
@@ -62,15 +66,26 @@ fn setup(
     // Spawn the scene
     commands.spawn((
         SceneRoot(scene),
-        Transform::from_xyz(0.0, 0.5, 0.0),
+        Transform::from_xyz(0.0, 0.5, 0.0).with_scale(Vec3::splat(100.0)),
         Name::new("Mutant"),
     ));
+}
 
-    /*let mesh = asset_server.load::<Mesh>("models/Mutant.fbx#Mesh1000");
-    let material = asset_server.load::<StandardMaterial>("models/Mutant.fbx#Material0");
-    commands.spawn((
-        Mesh3d(mesh),
-        MeshMaterial3d(material),
-        Transform::from_xyz(0.0, 0.5, 0.0),
-    ));*/
+fn apply_fallback_material(
+    mut commands: Commands,
+    query: Query<(Entity, &MeshMaterial3d<StandardMaterial>), (With<Mesh3d>, Without<FallbackMaterialApplied>)>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    for (entity, material_handle) in &query {
+        if let Some(material) = materials.get_mut(&material_handle.0) {
+            material.base_color = Color::WHITE;
+            material.base_color_texture = None;
+            material.emissive = LinearRgba::BLACK;
+            material.alpha_mode = AlphaMode::Opaque;
+            material.double_sided = true;
+            material.cull_mode = None;
+            material.unlit = true;
+        }
+        commands.entity(entity).insert(FallbackMaterialApplied);
+    }
 }
