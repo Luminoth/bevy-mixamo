@@ -136,6 +136,7 @@ fn on_character_data_loaded(
             CharacterModel(character.data.clone()),
             //Rotator,
         ))
+        // start the idle animation once the scene spawns
         .observe(start_idle);
 
     // load animations
@@ -169,6 +170,8 @@ fn start_idle(
     let character_model = character_models.get(scene_ready.entity).unwrap();
     let character_data = character_datum.get(&character_model.0).unwrap();
 
+    // find the AnimationPlayer for the character
+    // (this is usually on the root node of the scene)
     for child in children.iter_descendants(scene_ready.entity) {
         if let Ok(mut player) = animation_players.get_mut(child) {
             info!(
@@ -185,11 +188,11 @@ fn start_idle(
                 .unwrap();
             player.play(*animation_index).repeat();
 
-            // TODO: only do this once (probably a separate system?)
-            // connect the animation player to the mesh
             commands
                 .entity(child)
                 .insert(AnimationGraphHandle(animation_graph.clone()));
+
+            break;
         }
     }
 }
