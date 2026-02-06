@@ -1,4 +1,5 @@
 {
+  "id": "mutant",
   "model_path": "models/Mutant.glb",
   "animation_paths": {
     "idle": "animations/Breathing Idle.glb"
