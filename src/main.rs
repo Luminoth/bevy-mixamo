@@ -1,6 +1,10 @@
 use std::collections::HashMap;
 
-use bevy::{prelude::*, scene::SceneInstanceReady};
+use bevy::{
+    diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
+    prelude::*,
+    scene::SceneInstanceReady,
+};
 use bevy_common_assets::json::JsonAssetPlugin;
 use serde::Deserialize;
 
@@ -58,6 +62,9 @@ struct CharacterModel(Handle<CharacterData>);
 #[derive(Component)]
 struct Rotator;
 
+#[derive(Component)]
+struct FpsText;
+
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // camera
     commands.spawn((
@@ -104,6 +111,33 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     );
 
     commands.insert_resource(Characters(characters));
+}
+
+fn setup_fps_counter(mut commands: Commands) {
+    commands.spawn((
+        Text::from("FPS: 0.0"),
+        TextColor(Color::WHITE),
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(10.0),
+            left: Val::Px(10.0),
+            ..default()
+        },
+        FpsText,
+    ));
+}
+
+fn update_fps_text(
+    diagnostics: Res<DiagnosticsStore>,
+    mut query: Query<&mut Text, With<FpsText>>,
+) {
+    for mut text in &mut query {
+        if let Some(fps) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS) {
+            if let Some(value) = fps.smoothed() {
+                **text = format!("FPS: {value:.2}");
+            }
+        }
+    }
 }
 
 fn on_character_data_loaded(
@@ -206,7 +240,14 @@ fn rotate_model(time: Res<Time>, mut query: Query<&mut Transform, With<Rotator>>
 fn main() {
     let mut app = App::new();
 
-    app.add_plugins(DefaultPlugins);
+    app.add_plugins(DefaultPlugins.set(WindowPlugin {
+        primary_window: Some(Window {
+            present_mode: bevy::window::PresentMode::AutoNoVsync,
+            ..default()
+        }),
+        ..default()
+    }));
+    app.add_plugins(FrameTimeDiagnosticsPlugin::default());
 
     app.add_plugins(bevy::remote::RemotePlugin::default())
         .add_plugins(bevy::remote::http::RemoteHttpPlugin::default());
@@ -215,8 +256,8 @@ fn main() {
         .add_systems(Update, bridge_asset_events::<CharacterData>)
         .add_observer(on_character_data_loaded);
 
-    app.add_systems(Startup, setup)
-        .add_systems(Update, rotate_model);
+    app.add_systems(Startup, (setup, setup_fps_counter))
+        .add_systems(Update, (rotate_model, update_fps_text));
 
     app.run();
 }
