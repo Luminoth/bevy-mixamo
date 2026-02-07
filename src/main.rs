@@ -62,9 +62,6 @@ struct CharacterModel(Handle<CharacterData>);
 #[derive(Component)]
 struct Rotator;
 
-#[derive(Component)]
-struct FpsText;
-
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // camera
     commands.spawn((
@@ -111,33 +108,9 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     );
 
     commands.insert_resource(Characters(characters));
-}
 
-fn setup_fps_counter(mut commands: Commands) {
-    commands.spawn((
-        Text::from("FPS: 0.0"),
-        TextColor(Color::WHITE),
-        Node {
-            position_type: PositionType::Absolute,
-            top: Val::Px(10.0),
-            left: Val::Px(10.0),
-            ..default()
-        },
-        FpsText,
-    ));
-}
-
-fn update_fps_text(
-    diagnostics: Res<DiagnosticsStore>,
-    mut query: Query<&mut Text, With<FpsText>>,
-) {
-    for mut text in &mut query {
-        if let Some(fps) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS) {
-            if let Some(value) = fps.smoothed() {
-                **text = format!("FPS: {value:.2}");
-            }
-        }
-    }
+    setup_dropdown(&mut commands);
+    setup_fps_counter(&mut commands);
 }
 
 fn on_character_data_loaded(
@@ -247,17 +220,246 @@ fn main() {
         }),
         ..default()
     }));
-    app.add_plugins(FrameTimeDiagnosticsPlugin::default());
 
-    app.add_plugins(bevy::remote::RemotePlugin::default())
+    app.add_plugins(FrameTimeDiagnosticsPlugin::default())
+        .add_plugins(bevy::remote::RemotePlugin::default())
         .add_plugins(bevy::remote::http::RemoteHttpPlugin::default());
 
     app.add_plugins(JsonAssetPlugin::<CharacterData>::new(&[".json"]))
         .add_systems(Update, bridge_asset_events::<CharacterData>)
         .add_observer(on_character_data_loaded);
 
-    app.add_systems(Startup, (setup, setup_fps_counter))
-        .add_systems(Update, (rotate_model, update_fps_text));
+    app.add_systems(Update, handle_dropdown_interactions)
+        .add_observer(handle_dropdown_events);
+
+    app.add_systems(Update, update_fps_text);
+
+    app.add_systems(Startup, setup)
+        .add_systems(Update, rotate_model);
 
     app.run();
+}
+
+//// VIBED FPS TEXT HERE
+
+#[derive(Component)]
+struct FpsText;
+
+fn setup_fps_counter(commands: &mut Commands) {
+    commands.spawn((
+        Text::from("FPS: 0.0"),
+        TextColor(Color::WHITE),
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(10.0),
+            left: Val::Px(10.0),
+            ..default()
+        },
+        FpsText,
+    ));
+}
+
+fn update_fps_text(diagnostics: Res<DiagnosticsStore>, mut query: Query<&mut Text, With<FpsText>>) {
+    for mut text in &mut query {
+        if let Some(fps) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS) {
+            if let Some(value) = fps.smoothed() {
+                **text = format!("FPS: {value:.2}");
+            }
+        }
+    }
+}
+
+//// VIBED DROPDOWN HERE
+
+#[derive(Component)]
+struct Dropdown;
+
+#[derive(Component)]
+struct DropdownButton;
+
+#[derive(Component)]
+struct DropdownList;
+
+#[derive(Component)]
+struct DropdownItem(String);
+
+#[derive(Event)]
+struct DropdownChanged(pub String);
+
+const NORMAL_BUTTON: Color = Color::srgb(0.15, 0.15, 0.15);
+const HOVERED_BUTTON: Color = Color::srgb(0.25, 0.25, 0.25);
+const PRESSED_BUTTON: Color = Color::srgb(0.35, 0.75, 0.35);
+
+fn setup_dropdown(commands: &mut Commands) {
+    let options = vec![
+        "Option A",
+        "Option B",
+        "Option C",
+        "Random Value 1",
+        "Random Value 2",
+    ];
+
+    commands
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                top: Val::Px(10.0),
+                right: Val::Px(10.0),
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::FlexEnd,
+                ..default()
+            },
+            Dropdown,
+        ))
+        .with_children(|parent| {
+            // Button
+            parent
+                .spawn((
+                    Button,
+                    Node {
+                        width: Val::Px(150.0),
+                        height: Val::Px(50.0),
+                        border: UiRect::all(Val::Px(2.0)),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    BorderColor::all(Color::BLACK),
+                    BackgroundColor(NORMAL_BUTTON),
+                    DropdownButton,
+                ))
+                .with_children(|parent| {
+                    parent.spawn((
+                        Text::new("Select Option"),
+                        TextFont {
+                            font_size: 20.0,
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                    ));
+                });
+
+            // List (initially hidden)
+            parent
+                .spawn((
+                    Node {
+                        display: Display::None,
+                        flex_direction: FlexDirection::Column,
+                        width: Val::Px(150.0),
+                        border: UiRect::all(Val::Px(2.0)),
+                        margin: UiRect::top(Val::Px(5.0)),
+                        ..default()
+                    },
+                    BorderColor::all(Color::BLACK),
+                    BackgroundColor(Color::srgb(0.1, 0.1, 0.1)),
+                    DropdownList,
+                ))
+                .with_children(|parent| {
+                    for option in options {
+                        parent
+                            .spawn((
+                                Button,
+                                Node {
+                                    width: Val::Percent(100.0),
+                                    height: Val::Px(40.0),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::NONE),
+                                DropdownItem(option.to_string()),
+                            ))
+                            .with_children(|parent| {
+                                parent.spawn((
+                                    Text::new(option),
+                                    TextFont {
+                                        font_size: 18.0,
+                                        ..default()
+                                    },
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                    }
+                });
+        });
+}
+
+fn handle_dropdown_interactions(
+    mut commands: Commands,
+    dropdown_query: Query<&Children, With<Dropdown>>,
+    mut dropdown_list_query: Query<&mut Node, With<DropdownList>>,
+    mut button_query: Query<
+        (&Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<DropdownButton>),
+    >,
+    button_children_query: Query<&Children, With<DropdownButton>>,
+    mut item_query: Query<
+        (&Interaction, &mut BackgroundColor, &DropdownItem),
+        (Changed<Interaction>, Without<DropdownButton>),
+    >,
+    mut text_query: Query<&mut Text>,
+) {
+    // Handle main button click
+    for (interaction, mut color) in &mut button_query {
+        match *interaction {
+            Interaction::Pressed => {
+                *color = PRESSED_BUTTON.into();
+                // Toggle list visibility (Toggle ALL dropdowns for simplicity in this example)
+                for dropdown_children in &dropdown_query {
+                    for child in dropdown_children {
+                        if let Ok(mut list_node) = dropdown_list_query.get_mut(*child) {
+                            list_node.display = match list_node.display {
+                                Display::None => Display::Flex,
+                                _ => Display::None,
+                            };
+                        }
+                    }
+                }
+            }
+            Interaction::Hovered => {
+                *color = HOVERED_BUTTON.into();
+            }
+            Interaction::None => {
+                *color = NORMAL_BUTTON.into();
+            }
+        }
+    }
+
+    // Handle item clicks
+    for (interaction, mut color, item) in &mut item_query {
+        match *interaction {
+            Interaction::Pressed => {
+                *color = PRESSED_BUTTON.into();
+                commands.trigger(DropdownChanged(item.0.clone()));
+
+                // Close list and update button text (Update ALL dropdowns for simplicity)
+                for dropdown_children in &dropdown_query {
+                    for child in dropdown_children {
+                        // Close list
+                        if let Ok(mut list_node) = dropdown_list_query.get_mut(*child) {
+                            list_node.display = Display::None;
+                        }
+                        // Update button text
+                        if let Ok(text_children) = button_children_query.get(*child) {
+                            for text_child in text_children {
+                                if let Ok(mut text) = text_query.get_mut(*text_child) {
+                                    **text = item.0.clone();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            Interaction::Hovered => {
+                *color = HOVERED_BUTTON.into();
+            }
+            Interaction::None => {
+                *color = Color::NONE.into();
+            }
+        }
+    }
+}
+
+fn handle_dropdown_events(trigger: On<DropdownChanged>) {
+    info!("Dropdown Selection Changed: {}", trigger.0);
 }
