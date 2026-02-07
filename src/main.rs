@@ -1,3 +1,4 @@
+mod asset_event_bridge;
 mod dropdown;
 
 use std::collections::HashMap;
@@ -10,26 +11,8 @@ use bevy::{
 use bevy_common_assets::json::JsonAssetPlugin;
 use serde::Deserialize;
 
+use asset_event_bridge::*;
 use dropdown::*;
-
-#[derive(Event)]
-struct AssetLoadedEvent<A>(AssetId<A>)
-where
-    A: Asset;
-
-// bridge method because we can't observe asset events yet
-// https://github.com/bevyengine/bevy/issues/16041
-fn bridge_asset_events<A>(mut events: MessageReader<AssetEvent<A>>, mut commands: Commands)
-where
-    A: Asset,
-{
-    for event in events.read() {
-        if let AssetEvent::LoadedWithDependencies { id } = event {
-            debug!("bridging asset load for {}", id);
-            commands.trigger(AssetLoadedEvent(*id));
-        }
-    }
-}
 
 #[derive(Deserialize, Asset, TypePath)]
 struct CharacterData {
@@ -62,9 +45,6 @@ struct Characters(HashMap<String, Character>);
 
 #[derive(Component)]
 struct CharacterModel(Handle<CharacterData>);
-
-#[derive(Component)]
-struct Rotator;
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // camera
@@ -141,7 +121,7 @@ fn on_character_data_loaded(
     mut characters: ResMut<Characters>,
     asset_server: Res<AssetServer>,
 ) {
-    let character_data = character_datum.get(event.0).unwrap();
+    let character_data = character_datum.get(event.asset_id).unwrap();
     info!(
         "Loaded character data for '{}', loading assets ...",
         character_data.id
@@ -227,6 +207,9 @@ fn start_idle(
 fn handle_dropdown_events(trigger: On<DropdownChanged>) {
     info!("Dropdown Selection Changed: {}", trigger.selected_item);
 }
+
+#[derive(Component)]
+struct Rotator;
 
 fn rotate_model(time: Res<Time>, mut query: Query<&mut Transform, With<Rotator>>) {
     for mut transform in &mut query {
